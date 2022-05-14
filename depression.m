@@ -17,9 +17,11 @@ while i<size(m,1)
     end
             i=i+1;
 end
+writematrix(m,'anxiety_extracted.csv')
 m=m';
 m=mapminmax(m,-1,1);
 m=m';
+
 %% input £¨18£©
 I(:,1)=m(:,1);
 I(:,2)=m(:,2);
@@ -67,11 +69,12 @@ Y=S';
 
 
 %%  train
-m=2;
+x=2;
 c=100000;
 nl=3;% number of layers
-%net=TLCnet(X,Y,nl,m,c);%training net
-net=TLCnet(X(:,2001:12111),Y(:,2001:12111),nl,m,c);
+%seed=2;
+%net=TLCnet(X,Y,nl,seed,c);%training net
+net=TLCnet(X(:,2001:12111),Y(:,2001:12111),nl,x,c);
 plot(net{3});
 
 %%  test
@@ -81,35 +84,50 @@ Y_copy=Y_pre;
 Y_blank=Y_copy;
 negative_max=0;
 target=0;
-k=0;
+%k=0;
 negative=0;
 sum_max=0;
-sum=zeros(151,1);
-negative_copy=zeros(151,1);
-positive_copy=zeros(151,1);
+sum=0;
+ground_truth=[];
+negative_copy=0;
+positive_copy=0;
 positive=0;
-for j=-0.5:0.01:1
-    k=k+1;
+index=[];
+for i=2001:12111
+    if Y(i)==1 index
+threshold=0.5*(mean(Y_copy==1)-mean(Y_copy==-1))+mean(Y_copy==-1)
+%for j=-0.5:0.01:1
+ %   k=k+1;
     for i=1:size(Y_pre,2)
-        if Y_copy(i)>=0.5
+        if Y_copy(i)>=threshold
             Y_blank(i)=1;
         else 
             Y_blank(i)=-1;
         end
         if Y(i)==-1&&Y_blank(i)==Y(i)
-            negative_copy(k)=negative_copy(k)+1;
+            negative_copy=negative_copy+1;
         end
-        if Y(i)==1&&Y_blank(i)==Y(i)
-            positive_copy(k)=positive_copy(k)+1;
+       if Y(i)==1&&Y_blank(i)==-1
+            positive_copy=positive_copy+1;
         end
         if Y_blank(i)==Y(i)
-            sum(k)=sum(k)+1;
+            sum=sum+1;
+            ground_truth(i)=1;
+        else
+            ground_truth(i)=0;
         end
     end
-    if sum(k)>sum_max
-            sum_max=sum(k);
-            target=k;
-    end
+%    if sum(k)>sum_max
+%            sum_max=sum(k);
+%            target=k;
+%    end
+%end
+for i=1:1
+    figure
+   plot(Y(i,:));
+    plot(m(1001:2000,3))
+    hold on;
+ plot(Y_copy(1001:2000));
 end
 for i=1:size(Y_pre,2)
     if Y(i)==-1
@@ -121,10 +139,10 @@ for i=1:size(Y_pre,2)
 end
 positive
 negative
-target
-accr=sum(target)/size(Y_pre,2)
-positive_acc=positive_copy(target)/positive
-negative_acc=negative_copy(target)/negative
+%target
+accr=sum/size(Y_pre,2)
+TPR=negative_copy/negative
+FPR=positive_copy/positive
 
 for i=1:1
     figure
@@ -133,7 +151,47 @@ for i=1:1
     hold on;
     plot(Y_pre(i,1:200));
 end
+result=auc(Y_copy,ground_truth)
+hold on
+m=csvread('D:\college\spring\PRP\nsch_2020_topical_SAS\database_depression.csv',1,0);
+i=1;
+while i<size(m,1)
+%for i=1:17539
+    for j=1:29
+        if m(i,j)==0
+            %m(i,j)=mode(m(:,j));
+            m(i,:)=[];
+            i=i-1;
+            break;
+        end
+    end
+            i=i+1;
+end
+X=[ones(size(m,1),1) m(:,1:2) m(:,4:29)];
+
+Y=m(:,3);
+B=regress(Y(2001:12111,1),X(2001:12111,:));
+threshold=0.5*(mean(Y_copy==1)-mean(Y_copy==-1))+mean(Y_copy==-1)
+Y_copy=X(1:2000,:)*B;
+
+
+ground_truth=[];
+    for i=1:size(Y_copy,1)
+        if Y_copy(i)>=threshold
+            Y_blank(i)=2;
+        else 
+            Y_blank(i)=1;
+        end
+          if Y_blank(i)==Y(i)
+       %     sum(k)=sum(k)+1;
+            ground_truth(i)=1;
+        else
+            ground_truth(i)=0;
+        end
+    end
+    result=auc(Y_copy,ground_truth)
 %Read_PNN
+
  
 
 
